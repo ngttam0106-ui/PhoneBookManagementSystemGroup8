@@ -1,25 +1,68 @@
+import os
+
+from model.user import User
+
+
 class FileManager:
 
-    def load_users(self):
-        pass
+    USER_FILE = "data/users.txt"
 
-    def save_users(self):
-        pass
+    @staticmethod
+    def create_data_folder():
 
-    def load_contacts(self):
-        pass
+        if not os.path.exists("data"):
+            os.makedirs("data")
 
-    def save_contacts(self):
-        pass
+        if not os.path.exists(FileManager.USER_FILE):
 
-    def load_groups(self):
-        pass
+            with open(FileManager.USER_FILE, "w", encoding="utf-8"):
+                pass
 
-    def save_groups(self):
-        pass
 
-    def load_mapping(self):
-        pass
+    @staticmethod
+    def load_users():
 
-    def save_mapping(self):
-        pass
+        FileManager.create_data_folder()
+
+        users = []
+
+        with open(FileManager.USER_FILE,
+                  "r",
+                  encoding="utf-8") as file:
+
+            for line in file:
+
+                if line.strip() == "":
+                    continue
+
+                user = User.from_line(line)
+
+                if user is not None:
+                    users.append(user)
+
+        return users
+
+
+    @staticmethod
+    def save_users(users):
+
+        FileManager.create_data_folder()
+
+        with open(FileManager.USER_FILE,
+                  "w",
+                  encoding="utf-8") as file:
+
+            for user in users:
+                file.write(user.to_line() + "\n")
+
+
+    @staticmethod
+    def append_user(user):
+
+        FileManager.create_data_folder()
+
+        with open(FileManager.USER_FILE,
+                  "a",
+                  encoding="utf-8") as file:
+
+            file.write(user.to_line() + "\n")
