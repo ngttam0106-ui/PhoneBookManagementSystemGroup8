@@ -166,7 +166,6 @@ class RegisterWindow:
                 message
             )
 
-    # =======================================
 
     def clear_form(self):
 
