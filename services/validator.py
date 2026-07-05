@@ -1,36 +1,31 @@
 import re
 
-
 class Validator:
 
     @staticmethod
-    def is_empty(value):
-        return value.strip() == ""
-
-
-    @staticmethod
-    def is_valid_email(email):
+    def validate_email(email):
 
         pattern = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
 
-        return re.match(pattern, email) is not None
+        if re.match(pattern, email):
+            return True
 
-
-    @staticmethod
-    def is_valid_phone(phone):
-
-        pattern = r'^[0-9]{10}$'
-
-        return re.match(pattern, phone) is not None
-
+        return False
 
     @staticmethod
-    def is_valid_password(password):
+    def validate_phone(phone):
 
-        return len(password) >= 6
+        pattern = r'^0\d{9}$'
 
+        if re.match(pattern, phone):
+            return True
+
+        return False
 
     @staticmethod
-    def is_same_password(password, confirm):
+    def validate_password(password):
 
-        return password == confirm
+        if len(password) < 6:
+            return False
+
+        return True

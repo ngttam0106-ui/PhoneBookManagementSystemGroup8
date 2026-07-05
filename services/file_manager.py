@@ -1,68 +1,80 @@
 import os
 
-from model.user import User
-
 
 class FileManager:
 
-    USER_FILE = "data/users.txt"
-
-    @staticmethod
-    def create_data_folder():
-
-        if not os.path.exists("data"):
-            os.makedirs("data")
-
-        if not os.path.exists(FileManager.USER_FILE):
-
-            with open(FileManager.USER_FILE, "w", encoding="utf-8"):
-                pass
-
-
-    @staticmethod
-    def load_users():
-
-        FileManager.create_data_folder()
-
+    def load_users(self):
         users = []
 
-        with open(FileManager.USER_FILE,
-                  "r",
-                  encoding="utf-8") as file:
+        if not os.path.exists("data/users.txt"):
+            return users
 
+        with open("data/users.txt", "r", encoding="utf-8") as file:
             for line in file:
-
-                if line.strip() == "":
-                    continue
-
-                user = User.from_line(line)
-
-                if user is not None:
-                    users.append(user)
+                line = line.strip()
+                if line:
+                    users.append(line)
 
         return users
 
-
-    @staticmethod
-    def save_users(users):
-
-        FileManager.create_data_folder()
-
-        with open(FileManager.USER_FILE,
-                  "w",
-                  encoding="utf-8") as file:
-
+    def save_users(self, users):
+        with open("data/users.txt", "w", encoding="utf-8") as file:
             for user in users:
-                file.write(user.to_line() + "\n")
+                file.write(user + "\n")
 
+    def load_contacts(self):
+        contacts = []
 
-    @staticmethod
-    def append_user(user):
+        if not os.path.exists("data/contacts.txt"):
+            return contacts
 
-        FileManager.create_data_folder()
+        with open("data/contacts.txt", "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if line:
+                    contacts.append(line)
 
-        with open(FileManager.USER_FILE,
-                  "a",
-                  encoding="utf-8") as file:
+        return contacts
 
-            file.write(user.to_line() + "\n")
+    def save_contacts(self, contacts):
+        with open("data/contacts.txt", "w", encoding="utf-8") as file:
+            for contact in contacts:
+                file.write(contact + "\n")
+
+    def load_groups(self):
+        groups = []
+
+        if not os.path.exists("data/groups.txt"):
+            return groups
+
+        with open("data/groups.txt", "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if line:
+                    groups.append(line)
+
+        return groups
+
+    def save_groups(self, groups):
+        with open("data/groups.txt", "w", encoding="utf-8") as file:
+            for group in groups:
+                file.write(group + "\n")
+
+    def load_mapping(self):
+        mapping = []
+
+        if not os.path.exists("data/mapping.txt"):
+            return mapping
+
+        with open("data/mapping.txt", "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if line:
+                    mapping.append(line)
+
+        return mapping
+
+    def save_mapping(self, mapping):
+        with open("data/mapping.txt", "w", encoding="utf-8") as file:
+            for item in mapping:
+                file.write(item + "\n")
