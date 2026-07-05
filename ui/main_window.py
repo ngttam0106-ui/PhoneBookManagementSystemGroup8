@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 
+from ui.contact_window import ContactWindow
+from ui.group_window import GroupWindow
+
 
 class MainWindow:
 
@@ -123,13 +126,29 @@ class MainWindow:
         button_frame = tk.Frame(content, bg="white")
         button_frame.pack()
 
-        tk.Button(button_frame, text="Add", width=10).grid(row=0, column=0, padx=5)
+        tk.Button(
+            button_frame,
+            text="Add",
+            width=10
+        ).grid(row=0, column=0, padx=5)
 
-        tk.Button(button_frame, text="Edit", width=10).grid(row=0, column=1, padx=5)
+        tk.Button(
+            button_frame,
+            text="Edit",
+            width=10
+        ).grid(row=0, column=1, padx=5)
 
-        tk.Button(button_frame, text="Delete", width=10).grid(row=0, column=2, padx=5)
+        tk.Button(
+            button_frame,
+            text="Delete",
+            width=10
+        ).grid(row=0, column=2, padx=5)
 
-        tk.Button(button_frame, text="Refresh", width=10).grid(row=0, column=3, padx=5)
+        tk.Button(
+            button_frame,
+            text="Refresh",
+            width=10
+        ).grid(row=0, column=3, padx=5)
 
         # Status
         status = tk.Label(
@@ -141,22 +160,15 @@ class MainWindow:
         status.pack(fill="x", side="bottom")
 
     def show_contacts(self):
-        messagebox.showinfo(
-            "Contacts",
-            "Open Contact Window"
-        )
+        ContactWindow()
 
     def open_groups(self):
-        messagebox.showinfo(
-            "Groups",
-            "Open Group Window"
-        )
+        GroupWindow()
 
     def open_profile(self):
         messagebox.showinfo(
             "Profile",
             "Open Profile Window"
         )
-
     def run(self):
         self.root.mainloop()
