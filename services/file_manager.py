@@ -1,15 +1,30 @@
+import os
 from model.user import User
 from model.contact import Contact
 from model.group import Group
 from model.contact_group import ContactGroup
 
-
 class FileManager:
-
     USER_FILE = "data/users.txt"
     CONTACT_FILE = "data/contacts.txt"
     GROUP_FILE = "data/groups.txt"
     MAPPING_FILE = "data/mapping.txt"
+
+    @staticmethod
+    def _ensure_data_dir():
+        if not os.path.exists("data"):
+            os.makedirs("data")
+
+    @staticmethod
+    def reset_all():
+        """Xóa sạch toàn bộ dữ liệu trong các file hệ thống."""
+        FileManager._ensure_data_dir()
+        files = [FileManager.USER_FILE, FileManager.CONTACT_FILE, 
+                 FileManager.GROUP_FILE, FileManager.MAPPING_FILE]
+        for file_path in files:
+            if os.path.exists(file_path):
+                with open(file_path, "w", encoding="utf-8") as file:
+                    file.truncate(0)
 
     # ================= USER =================
 

@@ -1,26 +1,19 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
-
+from tkinter import ttk, messagebox
 from services.contact_service import ContactService
 from ui.contact_window import ContactWindow
 from ui.group_window import GroupWindow
-
+from services.file_manager import FileManager # Import để gọi reset
 
 class MainWindow:
-
     def __init__(self, root, current_user, login_window):
-
         self.root = root
         self.current_user = current_user
         self.login_window = login_window
-
-        self.contact_service = ContactService()
-
+        self.contact_service = ContactService(current_user=current_user)
         self.root.title("Phone Book Management System")
         self.root.geometry("1000x600")
         self.root.configure(bg="white")
-
         self.setup_ui()
 
     def setup_ui(self):
@@ -43,7 +36,6 @@ class MainWindow:
         ).pack(pady=15)
 
         # ================= LEFT MENU =================
-
         menu = tk.Frame(
             self.root,
             bg="#EEEEEE",
@@ -55,19 +47,16 @@ class MainWindow:
             fill="y"
         )
 
-        tk.Label(
+        self.welcome_label = tk.Label(
             menu,
             text=f"Welcome\n{self.current_user.full_name}",
             bg="#EEEEEE",
             font=("Arial", 14, "bold")
-        ).pack(pady=20)
+        )
 
-        tk.Button(
-            menu,
-            text="Contacts",
-            width=18,
-            command=self.show_contacts
-        ).pack(pady=10)
+        self.welcome_label.pack(pady=20)
+
+        # Contacts menu entry intentionally hidden/disabled per user request
 
         tk.Button(
             menu,
@@ -147,7 +136,10 @@ class MainWindow:
         columns = (
             "Name",
             "Phone",
-            "Email"
+            "Email",
+            "Address",
+            "Favorite",
+            "Emergency"
         )
 
         self.table = ttk.Treeview(
@@ -164,9 +156,10 @@ class MainWindow:
                 text=col
             )
 
+            width = 220 if col in ["Name", "Phone", "Email", "Address"] else 120
             self.table.column(
                 col,
-                width=220
+                width=width
             )
 
         self.table.pack(pady=20)
@@ -179,6 +172,12 @@ class MainWindow:
 
         # ================= BUTTON =================
 
+        tk.Button(menu, text="Reset System", width=18, bg="#FF6347", fg="white", 
+                  command=self.reset_system).pack(pady=10)
+
+        tk.Button(menu, text="Logout", width=18, bg="red", fg="white", 
+                  command=self.logout).pack(side="bottom", pady=30)
+        
         button_frame = tk.Frame(
             content,
             bg="white"
@@ -197,22 +196,29 @@ class MainWindow:
             button_frame,
             text="Edit",
             width=10,
-            command=self.show_contacts
+            command=self.edit_selected
         ).grid(row=0, column=1, padx=5)
 
         tk.Button(
             button_frame,
             text="Delete",
             width=10,
-            command=self.show_contacts
+            command=self.delete_selected
         ).grid(row=0, column=2, padx=5)
+
+        tk.Button(
+            button_frame,
+            text="View",
+            width=10,
+            command=self.view_selected
+        ).grid(row=0, column=3, padx=5)
 
         tk.Button(
             button_frame,
             text="Refresh",
             width=10,
             command=self.refresh_table
-        ).grid(row=0, column=3, padx=5)
+        ).grid(row=0, column=4, padx=5)
 
         # ================= STATUS =================
 
@@ -234,16 +240,39 @@ class MainWindow:
             self.table.delete(item)
 
         for contact in contacts:
+            # insert with iid set to contact_id so we can identify rows easily
+            try:
+                iid = str(contact.contact_id)
+            except Exception:
+                iid = None
 
-            self.table.insert(
-                "",
-                tk.END,
-                values=(
-                    contact.name,
-                    contact.phone,
-                    contact.email
+            if iid:
+                self.table.insert(
+                    "",
+                    tk.END,
+                    iid=iid,
+                    values=(
+                        contact.name,
+                        contact.phone,
+                        contact.email,
+                        contact.address,
+                        "Yes" if contact.favorite else "No",
+                        "Yes" if contact.emergency else "No"
+                    )
                 )
-            )
+            else:
+                self.table.insert(
+                    "",
+                    tk.END,
+                    values=(
+                        contact.name,
+                        contact.phone,
+                        contact.email,
+                        contact.address,
+                        "Yes" if contact.favorite else "No",
+                        "Yes" if contact.emergency else "No"
+                    )
+                )
 
     # =====================================================
 
@@ -272,36 +301,182 @@ class MainWindow:
             tk.END
         )
 
+        # Reload contacts from storage in case other services modified them
+        try:
+            self.contact_service.contacts = self.contact_service.file_manager.load_contacts()
+        except Exception:
+            # fallback: recreate service
+            try:
+                self.contact_service = ContactService(current_user=self.current_user)
+            except Exception:
+                pass
+
         self.load_table(
             self.contact_service.get_all_contacts()
         )
 
-    # =====================================================
+    def view_all_contacts(self):
+        self.load_table(self.contact_service.get_all_contacts())
 
-    def show_contacts(self):
+    def view_favorite_contacts(self):
+        self.load_table(self.contact_service.get_favorite_contacts())
 
-        ContactWindow()
-
-    # =====================================================
-
-    def open_groups(self):
-
-        GroupWindow()
+    def view_emergency_contacts(self):
+        self.load_table(self.contact_service.get_emergency_contacts())
 
     # =====================================================
 
-    def open_profile(self):
+    def contact_added_handler(self, contact_id=None):
+        """Called after a contact is added/updated: refresh table, lift window and select the contact.
 
-        messagebox.showinfo(
-            "Profile",
-            f"Full Name: {self.current_user.full_name}\n"
-            f"Email: {self.current_user.email}"
+        If `contact_id` is None, the last row will be selected.
+        """
+
+        self.refresh_table()
+
+        try:
+            self.root.deiconify()
+            self.root.lift()
+            # briefly make topmost so it appears above other windows
+            try:
+                self.root.attributes('-topmost', True)
+                self.root.after(100, lambda: self.root.attributes('-topmost', False))
+            except Exception:
+                pass
+            self.root.focus_force()
+        except Exception:
+            pass
+
+        children = self.table.get_children()
+        if not children:
+            return
+
+        if contact_id is None:
+            last = children[-1]
+            try:
+                self.table.selection_set(last)
+                self.table.see(last)
+            except Exception:
+                pass
+            return
+
+        iid = str(contact_id)
+        if iid in children:
+            try:
+                self.table.selection_set(iid)
+                self.table.see(iid)
+            except Exception:
+                pass
+
+    # =====================================================
+
+    def delete_selected(self):
+        """Delete the currently selected contact from storage and refresh table."""
+
+        selected = self.table.selection()
+
+        if not selected:
+            messagebox.showwarning("Warning", "Please select a contact to delete.")
+            return
+
+        # iid was set to contact_id when loading
+        iid = selected[0]
+
+        # confirm
+        if not messagebox.askyesno("Confirm", "Delete selected contact?"):
+            return
+
+        try:
+            contact_id = int(iid)
+        except Exception:
+            # fallback: try to match by values
+            vals = self.table.item(iid)['values']
+            contact_id = None
+            for contact in self.contact_service.get_all_contacts():
+                if (contact.name, contact.phone, contact.email) == (vals[0], vals[1], vals[2]):
+                    contact_id = contact.contact_id
+                    break
+
+        if contact_id is None:
+            messagebox.showerror("Error", "Could not determine selected contact ID.")
+            return
+
+        deleted = self.contact_service.delete_contact(contact_id)
+
+        if deleted:
+            messagebox.showinfo("Deleted", "Contact deleted.")
+            self.refresh_table()
+        else:
+            messagebox.showerror("Error", "Failed to delete contact.")
+
+    # =====================================================
+
+    def edit_selected(self):
+        """Open the selected contact in the ContactWindow for editing."""
+
+        selected = self.table.selection()
+
+        if not selected:
+            messagebox.showwarning("Warning", "Please select a contact to edit.")
+            return
+
+        iid = selected[0]
+
+        try:
+            contact_id = int(iid)
+        except Exception:
+            vals = self.table.item(iid)['values']
+            contact_id = None
+            for contact in self.contact_service.get_all_contacts():
+                if (contact.name, contact.phone, contact.email) == (vals[0], vals[1], vals[2]):
+                    contact_id = contact.contact_id
+                    break
+
+        if contact_id is None:
+            messagebox.showerror("Error", "Could not determine selected contact ID for editing.")
+            return
+
+        contact = self.contact_service.get_contact(contact_id)
+
+        if contact is None:
+            messagebox.showerror("Error", "Selected contact not found.")
+            return
+
+        # Open edit dialog and pass callback to refresh and select this contact
+        ContactWindow(
+            current_user=self.current_user,
+            on_saved=self.contact_added_handler,
+            contact=contact
         )
 
     # =====================================================
 
+    def view_selected(self):
+        selected = self.table.selection()
+        if not selected:
+            messagebox.showwarning("Warning", "Please select a contact to view.")
+            return
+
+        iid = selected[0]
+        try:
+            contact_id = int(iid)
+        except Exception:
+            vals = self.table.item(iid)['values']
+            contact_id = None
+            for contact in self.contact_service.get_all_contacts():
+                if (contact.name, contact.phone, contact.email) == (vals[0], vals[1], vals[2]):
+                    contact_id = contact.contact_id
+                    break
+
     def logout(self):
 
-        self.root.destroy()
+        answer = messagebox.askyesno(
+            "Logout",
+            "Do you want to logout?"
+        )
 
-        self.login_window.deiconify()
+        if answer:
+
+            self.root.destroy()
+
+            self.login_window.deiconify()

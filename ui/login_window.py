@@ -142,17 +142,18 @@ class LoginWindow:
         RegisterWindow(register)
 
     # ===================================
-
     def open_main(self, current_user):
 
         self.root.withdraw()
 
         from ui.main_window import MainWindow
 
-        new_window = tk.Toplevel()
+        new_window = tk.Toplevel(self.root)
 
         MainWindow(
             new_window,
             current_user,
             self.root
         )
+
+        new_window.focus_force()

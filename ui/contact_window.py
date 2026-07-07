@@ -1,161 +1,193 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox
 
 from services.contact_service import ContactService
 
 
 class ContactWindow:
 
-    def __init__(self):
-        self.service = ContactService()
+    def __init__(self, current_user=None, on_saved=None, contact=None):
+        self.service = ContactService(current_user=current_user)
+        self.on_saved = on_saved
+        self.contact = contact
 
         self.root = tk.Toplevel()
-        self.root.title("Contact Management")
-        self.root.geometry("900x500")
+        title = "Edit Contact" if contact is not None else "Add Contact"
+        self.root.title(title)
+        self.root.geometry("420x360")
         self.root.resizable(False, False)
+        self.root.attributes('-topmost', True)
+        self.root.focus_force()
+        self.root.after(100, lambda: self.root.attributes('-topmost', False))
 
-        self.search_var = tk.StringVar()
+        self.fields = {}
 
-        # Search
-        tk.Label(self.root, text="Search:").pack(pady=5)
+        # Phone field only accepts digits while typing
+        def validate_digit_only(new_value):
+            if new_value == "":
+                return True
+            return new_value.isdigit()
 
-        tk.Entry(
-            self.root,
-            textvariable=self.search_var,
-            width=40
-        ).pack()
+        validate_command = self.root.register(validate_digit_only)
 
-        tk.Button(
-            self.root,
-            text="Search",
-            command=self.search_contact
-        ).pack(pady=5)
+        labels = [
+            ("Name", "name"),
+            ("Phone", "phone"),
+            ("Email", "email"),
+            ("Address", "address"),
+        ]
 
-        # Sort
-        self.sort_box = ttk.Combobox(
-            self.root,
-            values=[
-                "A-Z",
-                "Latest",
-                "Oldest"
-            ],
-            state="readonly"
+        for index, (text, key) in enumerate(labels):
+            tk.Label(self.root, text=text).grid(row=index, column=0, sticky="w", padx=12, pady=8)
+            if key == "phone":
+                entry = tk.Entry(self.root, width=35, validate="key", validatecommand=(validate_command, "%P"))
+            else:
+                entry = tk.Entry(self.root, width=35)
+            entry.grid(row=index, column=1, padx=12, pady=8)
+            self.fields[key] = entry
+
+        # If editing, pre-fill fields
+        if self.contact is not None:
+            try:
+                self.fields["name"].insert(0, self.contact.name)
+                self.fields["phone"].insert(0, self.contact.phone)
+                self.fields["email"].insert(0, self.contact.email)
+                self.fields["address"].insert(0, self.contact.address)
+            except Exception:
+                pass
+
+        # Initialize checkbox variables from contact when editing so the tick state persists
+        fav_init = self.contact.favorite if self.contact is not None else False
+        emg_init = self.contact.emergency if self.contact is not None else False
+
+        self.favorite_var = tk.BooleanVar(value=fav_init)
+        self.emergency_var = tk.BooleanVar(value=emg_init)
+
+        tk.Checkbutton(self.root, text="Favorite", variable=self.favorite_var).grid(
+            row=4, column=0, padx=12, pady=8, sticky="w"
+        )
+        tk.Checkbutton(self.root, text="Emergency", variable=self.emergency_var).grid(
+            row=4, column=1, padx=12, pady=8, sticky="w"
         )
 
-        self.sort_box.current(0)
-        self.sort_box.pack(pady=5)
+        button_frame = tk.Frame(self.root)
+        button_frame.grid(row=5, column=0, columnspan=2, pady=14)
 
-        tk.Button(
-            self.root,
-            text="Sort",
-            command=self.sort_contact
-        ).pack(pady=5)
+        tk.Button(button_frame, text="Save", width=14, command=self.save_contact).grid(row=0, column=0, padx=8)
+        tk.Button(button_frame, text="Cancel", width=14, command=self.root.destroy).grid(row=0, column=1, padx=8)
 
-        # Table
-        self.table = ttk.Treeview(
-            self.root,
-            columns=(
-                "ID",
-                "Name",
-                "Phone",
-                "Email",
-                "Address"
-            ),
-            show="headings"
-        )
+    def save_contact(self):
+        name = self.fields["name"].get().strip()
+        phone = self.fields["phone"].get().strip()
+        email = self.fields["email"].get().strip()
+        address = self.fields["address"].get().strip()
 
-        columns = (
-            "ID",
-            "Name",
-            "Phone",
-            "Email",
-            "Address"
-        )
+        if not name or not phone:
+            messagebox.showwarning("Warning", "Name and Phone are required.")
+            return
 
-        for col in columns:
-            self.table.heading(col, text=col)
+        if not phone.isdigit():
+            messagebox.showwarning("Warning", "Phone must contain only digits.")
+            return
 
-        self.table.column("ID", width=60, anchor="center")
-        self.table.column("Name", width=180)
-        self.table.column("Phone", width=120)
-        self.table.column("Email", width=220)
-        self.table.column("Address", width=250)
+        if email and not email.lower().endswith("@gmail.com"):
+            messagebox.showwarning("Warning", "Email must end with '@gmail.com'.")
+            return
 
-        # Scrollbar
-        scrollbar = ttk.Scrollbar(
-            self.root,
-            orient="vertical",
-            command=self.table.yview
-        )
-
-        self.table.configure(
-            yscrollcommand=scrollbar.set
-        )
-
-        scrollbar.pack(side="right", fill="y")
-        self.table.pack(fill="both", expand=True)
-
-        # Load dữ liệu
-        self.load_table(
-            self.service.get_all_contacts()
-        )
-
-    def load_table(self, contacts):
-
-        for item in self.table.get_children():
-            self.table.delete(item)
-
-        for contact in contacts:
-
-            self.table.insert(
-                "",
-                tk.END,
-                values=(
-                    contact.contact_id,
-                    contact.name,
-                    contact.phone,
-                    contact.email,
-                    contact.address
-                )
-            )
-
-    def search_contact(self):
-
-        keyword = self.search_var.get().strip()
-
-        if keyword == "":
-            self.load_table(
-                self.service.get_all_contacts()
+        if self.service.is_duplicate_contact(
+            name=name,
+            phone=phone,
+            email=email,
+            address=address,
+            exclude_id=self.contact.contact_id if self.contact is not None else None,
+        ):
+            messagebox.showwarning(
+                "Warning",
+                "Duplicate contact detected. Name, phone, email, and address must be unique."
             )
             return
 
-        contacts = self.service.search_contact(keyword)
+        # If editing an existing contact, call edit_contact; else add a new one
+        if self.contact is not None:
+            success = self.service.edit_contact(
+                contact_id=self.contact.contact_id,
+                name=name,
+                phone=phone,
+                email=email,
+                address=address,
+                favorite=self.favorite_var.get(),
+                emergency=self.emergency_var.get(),
+            )
 
-        self.load_table(contacts)
+            if not success:
+                messagebox.showwarning(
+                    "Warning",
+                    "Duplicate contact detected. Name, phone, email, and address must be unique."
+                )
+                return
 
-    def sort_contact(self):
+            # Close dialog then notify
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
 
-        option = self.sort_box.get()
+            if self.on_saved is not None:
+                try:
+                    self.on_saved(self.contact.contact_id)
+                except Exception:
+                    pass
 
-        if option == "A-Z":
-            contacts = self.service.sort_az()
+            messagebox.showinfo("Success", "Contact has been updated.")
+            return
 
-        elif option == "Latest":
-            contacts = self.service.sort_latest()
+        contact = self.service.add_contact(
+            name=name,
+            phone=phone,
+            email=email,
+            address=address,
+            favorite=self.favorite_var.get(),
+            emergency=self.emergency_var.get(),
+        )
+
+        if contact is None:
+            messagebox.showwarning(
+                "Warning",
+                "Duplicate contact detected. Name, phone, email, and address must be unique."
+            )
+            return
+
+        # Close the add dialog first so any subsequent windows/messages appear on top
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+
+        if self.on_saved is not None:
+            # Notify parent (MainWindow) to refresh and focus; pass new contact id
+            try:
+                self.on_saved(contact.contact_id)
+            except Exception:
+                pass
 
         else:
-            contacts = self.service.sort_oldest()
+            # If no callback provided (e.g., opened from Login or standalone),
+            # open the main window with a Guest user so the user can see the table immediately.
+            try:
+                from ui.main_window import MainWindow
+                from model.user import User
 
-        self.load_table(contacts)
+                guest = User(0, "Guest", "guest@example.com", "", "", "")
 
-    def add_contact(self):
-        pass
+                new_win = tk.Toplevel()
+                main = MainWindow(new_win, guest, None)
+                # Refresh and select the new contact
+                try:
+                    main.contact_added_handler()
+                except Exception:
+                    main.refresh_table()
+            except Exception:
+                pass
 
-    def edit_contact(self):
-        pass
+        messagebox.showinfo("Success", "Contact has been added.")
 
-    def delete_contact(self):
-        pass
-
-    def view_contact(self):
-        pass
