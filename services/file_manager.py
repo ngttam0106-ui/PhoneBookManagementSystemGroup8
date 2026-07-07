@@ -1,5 +1,3 @@
-import os
-
 from model.user import User
 from model.contact import Contact
 from model.group import Group
@@ -8,53 +6,69 @@ from model.contact_group import ContactGroup
 
 class FileManager:
 
-    def __init__(self):
-        self.user_file = "data/users.txt"
-        self.contact_file = "data/contacts.txt"
-        self.group_file = "data/groups.txt"
-        self.mapping_file = "data/mapping.txt"
+    USER_FILE = "data/users.txt"
+    CONTACT_FILE = "data/contacts.txt"
+    GROUP_FILE = "data/groups.txt"
+    MAPPING_FILE = "data/mapping.txt"
 
     # ================= USER =================
 
-    def load_users(self):
+    @staticmethod
+    def load_users():
+
         users = []
 
         try:
-            with open(self.user_file, "r", encoding="utf-8") as file:
+            with open(FileManager.USER_FILE, "r", encoding="utf-8") as file:
+
                 for line in file:
+
                     line = line.strip()
 
-                    if not line:
+                    if line == "":
                         continue
 
-                    users.append(line)
+                    user = User.from_line(line)
+
+                    if user:
+                        users.append(user)
 
         except FileNotFoundError:
             pass
 
         return users
 
-    def save_users(self, users):
+    @staticmethod
+    def save_users(users):
 
-        with open(self.user_file, "w", encoding="utf-8") as file:
+        with open(FileManager.USER_FILE, "w", encoding="utf-8") as file:
 
             for user in users:
-                file.write(str(user) + "\n")
+                file.write(user.to_line() + "\n")
+
+    @staticmethod
+    def append_user(user):
+
+        with open(FileManager.USER_FILE, "a", encoding="utf-8") as file:
+
+            file.write(user.to_line() + "\n")
 
     # ================= CONTACT =================
 
-    def load_contacts(self):
+    @staticmethod
+    def load_contacts():
 
         contacts = []
 
         try:
-            with open(self.contact_file, "r", encoding="utf-8") as file:
+
+            with open(FileManager.CONTACT_FILE, "r", encoding="utf-8") as file:
 
                 for line in file:
 
                     line = line.strip()
 
-                    if not line:
+                    if line == "":
                         continue
 
                     data = line.split("|")
@@ -78,13 +92,14 @@ class FileManager:
 
         return contacts
 
-    def save_contacts(self, contacts):
+    @staticmethod
+    def save_contacts(contacts):
 
-        with open(self.contact_file, "w", encoding="utf-8") as file:
+        with open(FileManager.CONTACT_FILE, "w", encoding="utf-8") as file:
 
             for contact in contacts:
 
-                line = (
+                file.write(
                     f"{contact.contact_id}|"
                     f"{contact.user_id}|"
                     f"{contact.name}|"
@@ -96,22 +111,22 @@ class FileManager:
                     f"{contact.emergency}\n"
                 )
 
-                file.write(line)
-
     # ================= GROUP =================
 
-    def load_groups(self):
+    @staticmethod
+    def load_groups():
 
         groups = []
 
         try:
-            with open(self.group_file, "r", encoding="utf-8") as file:
+
+            with open(FileManager.GROUP_FILE, "r", encoding="utf-8") as file:
 
                 for line in file:
 
                     line = line.strip()
 
-                    if not line:
+                    if line == "":
                         continue
 
                     data = line.split("|")
@@ -129,35 +144,35 @@ class FileManager:
 
         return groups
 
-    def save_groups(self, groups):
+    @staticmethod
+    def save_groups(groups):
 
-        with open(self.group_file, "w", encoding="utf-8") as file:
+        with open(FileManager.GROUP_FILE, "w", encoding="utf-8") as file:
 
             for group in groups:
 
-                line = (
+                file.write(
                     f"{group.group_id}|"
                     f"{group.user_id}|"
                     f"{group.group_name}\n"
                 )
 
-                file.write(line)
-
     # ================= CONTACT GROUP =================
 
-    def load_mapping(self):
+    @staticmethod
+    def load_mapping():
 
         mappings = []
 
         try:
 
-            with open(self.mapping_file, "r", encoding="utf-8") as file:
+            with open(FileManager.MAPPING_FILE, "r", encoding="utf-8") as file:
 
                 for line in file:
 
                     line = line.strip()
 
-                    if not line:
+                    if line == "":
                         continue
 
                     data = line.split("|")
@@ -175,16 +190,15 @@ class FileManager:
 
         return mappings
 
-    def save_mapping(self, mappings):
+    @staticmethod
+    def save_mapping(mappings):
 
-        with open(self.mapping_file, "w", encoding="utf-8") as file:
+        with open(FileManager.MAPPING_FILE, "w", encoding="utf-8") as file:
 
             for mapping in mappings:
 
-                line = (
+                file.write(
                     f"{mapping.mapping_id}|"
                     f"{mapping.contact_id}|"
                     f"{mapping.group_id}\n"
                 )
-
-                file.write(line)

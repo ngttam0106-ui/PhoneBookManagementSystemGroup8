@@ -1,0 +1,5 @@
+1|4|khang|077777777777|khangberry@gmail.com|134 dd||True|False
+2|2|tam|0987654321|tamtam@gmail.com|||False|False
+4|2|nhiiiii|1234567890||||False|False
+5|5|Tama|0989123783||||True|False
+6|5|Tama|0989123784||||False|True
