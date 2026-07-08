@@ -11,43 +11,47 @@ class ProfileWindow:
         self.root = root
         self.current_user = current_user
 
+        # Thiết lập cửa sổ
         self.root.title("User Profile")
         self.root.geometry("550x650")
         self.root.resizable(False, False)
-        self.root.attributes("-topmost", True)
+        # Bỏ topmost để không bị đè cửa sổ chọn file
+        self.root.attributes("-topmost", False)
 
-        self.avatar_path = current_user.avatar
+        # Xử lý avatar an toàn: nếu None thì gán chuỗi rỗng
+        self.avatar_path = getattr(self.current_user, 'avatar', "") or ""
         self.avatar_image = None
-        self.avatar_size = (150, 150)  # Kích thước khung và ảnh
+        self.avatar_size = (150, 150)
 
         self.create_widgets()
 
     def create_widgets(self):
+        # Tiêu đề
         tk.Label(self.root, text="USER PROFILE", font=("Arial", 18, "bold")).pack(pady=20)
 
         # Full Name
         tk.Label(self.root, text="Full Name").pack(anchor="w", padx=60)
         self.full_name_entry = tk.Entry(self.root, width=35)
-        self.full_name_entry.insert(0, self.current_user.full_name)
+        self.full_name_entry.insert(0, self.current_user.full_name or "")
         self.full_name_entry.pack(ipady=4)
 
         # Email
         tk.Label(self.root, text="Email").pack(anchor="w", padx=60, pady=(10, 0))
         self.email_entry = tk.Entry(self.root, width=35)
-        self.email_entry.insert(0, self.current_user.email)
+        self.email_entry.insert(0, self.current_user.email or "")
         self.email_entry.config(state="disabled")
         self.email_entry.pack(ipady=4)
 
         # Phone
         tk.Label(self.root, text="Phone Number").pack(anchor="w", padx=60, pady=(10, 0))
         self.phone_entry = tk.Entry(self.root, width=35)
-        self.phone_entry.insert(0, self.current_user.phone)
+        self.phone_entry.insert(0, self.current_user.phone or "")
         self.phone_entry.pack(ipady=4)
 
-        # Avatar Label - Định hình khung 150x150 cố định
+        # Avatar Label
         tk.Label(self.root, text="Avatar").pack(anchor="w", padx=60, pady=(20, 0))
-        self.avatar_label = tk.Label(self.root, width=20, height=10, relief="solid", bd=1)
-        self.avatar_label.config(width=self.avatar_size[0], height=self.avatar_size[1])
+        self.avatar_label = tk.Label(self.root, width=150, height=150, relief="solid", bd=1)
+        self.avatar_label.config(width=20, height=10)  # Kích thước tính theo đơn vị ký tự
         self.avatar_label.pack(pady=10)
 
         self.load_avatar()
@@ -62,24 +66,22 @@ class ProfileWindow:
         tk.Button(button_frame, text="Cancel", width=15, command=self.root.destroy).grid(row=0, column=1, padx=10)
 
     def load_avatar(self):
+        target_size = (150, 150)  # Kích thước bạn muốn
         if self.avatar_path and os.path.exists(self.avatar_path):
             try:
                 image = Image.open(self.avatar_path)
-                # Dùng ImageOps.fit để cắt ảnh chuẩn 150x150 không méo
-                image = ImageOps.fit(image, self.avatar_size, Image.Resampling.LANCZOS)
+                # ImageOps.fit tự động cắt ảnh theo tỷ lệ khung hình chuẩn
+                image = ImageOps.fit(image, target_size, Image.Resampling.LANCZOS)
+
                 self.avatar_image = ImageTk.PhotoImage(image)
-                self.avatar_label.config(image=self.avatar_image, text="")
+                self.avatar_label.config(image=self.avatar_image, text="", width=150, height=150)
             except Exception:
-                self.avatar_label.config(image="", text="Load Error")
+                self.avatar_label.config(text="Error", width=20, height=10)
         else:
-            self.avatar_label.config(image="", text="No Avatar")
+            self.avatar_label.config(text="No Avatar", width=20, height=10)
 
     def choose_avatar(self):
-        # Tạm tắt topmost để không đè cửa sổ chọn file
-        self.root.attributes("-topmost", False)
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
-        self.root.attributes("-topmost", True)
-
         if file_path:
             self.avatar_path = file_path
             self.load_avatar()
@@ -88,6 +90,7 @@ class ProfileWindow:
         full_name = self.full_name_entry.get().strip()
         phone = self.phone_entry.get().strip()
 
+        # Gọi service để update
         success, message = AuthService.update_profile(
             self.current_user.user_id, full_name, phone, self.avatar_path
         )
