@@ -4,29 +4,23 @@ from model.contact import Contact
 from model.group import Group
 from model.contact_group import ContactGroup
 
+
 class FileManager:
+
     USER_FILE = "data/users.txt"
     CONTACT_FILE = "data/contacts.txt"
     GROUP_FILE = "data/groups.txt"
     MAPPING_FILE = "data/mapping.txt"
 
-    @staticmethod
-    def _ensure_data_dir():
-        if not os.path.exists("data"):
-            os.makedirs("data")
-
-    @staticmethod
-    def reset_all():
-        """Xóa sạch toàn bộ dữ liệu trong các file hệ thống."""
-        FileManager._ensure_data_dir()
-        files = [FileManager.USER_FILE, FileManager.CONTACT_FILE, 
-                 FileManager.GROUP_FILE, FileManager.MAPPING_FILE]
-        for file_path in files:
-            if os.path.exists(file_path):
-                with open(file_path, "w", encoding="utf-8") as file:
-                    file.truncate(0)
-
     # ================= USER =================
+    @staticmethod
+    def update_user(updated_user):
+        users = FileManager.load_users()
+        for i, user in enumerate(users):
+            if user.user_id == updated_user.user_id:
+                users[i] = updated_user
+                break
+        FileManager.save_users(users)
 
     @staticmethod
     def load_users():
@@ -69,6 +63,12 @@ class FileManager:
             file.write(user.to_line() + "\n")
 
     # ================= CONTACT =================
+    @staticmethod
+    def reset_all_contacts(current_user):
+        """Xóa danh bạ thuộc về người dùng hiện tại."""
+        all_contacts = FileManager.load_contacts()
+        remaining_contacts = [c for c in all_contacts if c.user_id != current_user.user_id]
+        FileManager.save_contacts(remaining_contacts)
 
     @staticmethod
     def load_contacts():

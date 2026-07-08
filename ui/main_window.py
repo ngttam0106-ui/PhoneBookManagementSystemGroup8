@@ -1,19 +1,47 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+from tkinter import messagebox
+
 from services.contact_service import ContactService
 from ui.contact_window import ContactWindow
 from ui.group_window import GroupWindow
-from services.file_manager import FileManager # Import để gọi reset
+
 
 class MainWindow:
+    def on_sort_change(self, event):
+        criteria = self.sort_combo.get()
+        # Lấy danh sách hiện tại từ dịch vụ
+        contacts = self.contact_service.get_all_contacts()
+        # Sắp xếp
+        sorted_list = self.contact_service.sort_contacts(contacts, criteria)
+        # Load lại bảng
+        self.load_table(sorted_list)
+
+    def reset_system(self):
+        if messagebox.askyesno("Confirm Reset",
+                               "Are you sure you want to delete ALL your contacts? This cannot be undone."):
+            # Gọi service để reset dữ liệu
+            from services.file_manager import FileManager
+            FileManager.reset_all_contacts(self.current_user)
+
+            # Làm mới bảng dữ liệu sau khi xóa
+            self.refresh_table()
+
+            # Thông báo thành công
+            messagebox.showinfo("Success", "Your contact list has been cleared.")
+
     def __init__(self, root, current_user, login_window):
+
         self.root = root
         self.current_user = current_user
         self.login_window = login_window
+
         self.contact_service = ContactService(current_user=current_user)
+
         self.root.title("Phone Book Management System")
         self.root.geometry("1000x600")
         self.root.configure(bg="white")
+
         self.setup_ui()
 
     def setup_ui(self):
@@ -36,6 +64,7 @@ class MainWindow:
         ).pack(pady=15)
 
         # ================= LEFT MENU =================
+
         menu = tk.Frame(
             self.root,
             bg="#EEEEEE",
@@ -99,6 +128,18 @@ class MainWindow:
             bg="white",
             font=("Arial", 18, "bold")
         ).pack(pady=20)
+
+        # ===== SORTING =====
+        tk.Label(content, text="Sort by:", bg="white").pack(side="left", padx=(20, 5))
+
+        self.sort_combo = ttk.Combobox(
+            content,
+            values=["A-Z", "Z-A", "Newest", "Oldest"],
+            width=10,
+            state="readonly"
+        )
+        self.sort_combo.pack(side="left", padx=5)
+        self.sort_combo.bind("<<ComboboxSelected>>", self.on_sort_change)
 
         # ================= SEARCH =================
 
@@ -172,12 +213,6 @@ class MainWindow:
 
         # ================= BUTTON =================
 
-        tk.Button(menu, text="Reset System", width=18, bg="#FF6347", fg="white", 
-                  command=self.reset_system).pack(pady=10)
-
-        tk.Button(menu, text="Logout", width=18, bg="red", fg="white", 
-                  command=self.logout).pack(side="bottom", pady=30)
-        
         button_frame = tk.Frame(
             content,
             bg="white"
@@ -198,7 +233,14 @@ class MainWindow:
             width=10,
             command=self.edit_selected
         ).grid(row=0, column=1, padx=5)
-
+        tk.Button(
+            menu,
+            text="Reset Contacts",
+            width=18,
+            bg="#FF6347",
+            fg="white",
+            command=self.reset_system
+        ).pack(pady=10)
         tk.Button(
             button_frame,
             text="Delete",
@@ -467,6 +509,69 @@ class MainWindow:
                 if (contact.name, contact.phone, contact.email) == (vals[0], vals[1], vals[2]):
                     contact_id = contact.contact_id
                     break
+
+        if contact_id is None:
+            messagebox.showerror("Error", "Could not determine selected contact ID for viewing.")
+            return
+
+        contact = self.contact_service.get_contact(contact_id)
+        if contact is None:
+            messagebox.showerror("Error", "Selected contact not found.")
+            return
+
+        messagebox.showinfo(
+            "Contact Details",
+            f"Name: {contact.name}\n"
+            f"Phone: {contact.phone}\n"
+            f"Email: {contact.email}\n"
+            f"Address: {contact.address}\n"
+            f"Favorite: {'Yes' if contact.favorite else 'No'}\n"
+            f"Emergency: {'Yes' if contact.emergency else 'No'}"
+        )
+
+    # =====================================================
+
+    def show_contacts(self):
+
+        ContactWindow(
+            current_user=self.current_user,
+            on_saved=self.contact_added_handler
+        )
+
+    # =====================================================
+
+    def open_groups(self):
+
+        GroupWindow()
+
+    # =====================================================
+
+    def open_profile(self):
+        # 1. Tạo cửa sổ con
+        profile_window = tk.Toplevel(self.root)
+
+        # 2. Import và khởi tạo
+        from ui.profile_window import ProfileWindow
+        ProfileWindow(profile_window, self.current_user)
+
+        # 3. Biến thành modal (người dùng phải đóng cửa sổ này mới được thao tác cửa sổ chính)
+        profile_window.grab_set()
+
+        # 4. Chờ cho đến khi cửa sổ con đóng lại
+        self.root.wait_window(profile_window)
+
+        # 5. Cập nhật lại thông tin ở cửa sổ chính sau khi cửa sổ con đóng
+        self.refresh_user_info()
+
+    # =====================================================
+
+    def refresh_user_info(self):
+
+        self.welcome_label.config(
+            text=f"Welcome\n{self.current_user.full_name}"
+        )
+
+    # =====================================================
 
     def logout(self):
 

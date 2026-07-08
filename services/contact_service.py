@@ -3,6 +3,17 @@ from model.contact import Contact
 
 
 class ContactService:
+
+    def sort_contacts(self, contacts, criteria):
+        if criteria == 'A-Z':
+            return sorted(contacts, key=lambda x: x.name.lower())
+        elif criteria == 'Z-A':
+            return sorted(contacts, key=lambda x: x.name.lower(), reverse=True)
+        elif criteria == 'Newest':
+            return sorted(contacts, key=lambda x: x.contact_id, reverse=True)
+        elif criteria == 'Oldest':
+            return sorted(contacts, key=lambda x: x.contact_id)
+        return contacts
     def __init__(self, current_user=None):
         self.file_manager = FileManager()
         self.current_user = current_user

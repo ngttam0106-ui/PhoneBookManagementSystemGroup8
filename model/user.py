@@ -33,8 +33,12 @@ class User:
 
         data = line.strip().split("|")
 
-        if len(data) != 6:
+        if len(data) < 5:
             return None
+
+            # Nếu dòng dữ liệu chỉ có 5 phần (thiếu avatar), ta thêm một phần tử rỗng
+        while len(data) < 6:
+            data.append("")
 
         return User(
             int(data[0]),
